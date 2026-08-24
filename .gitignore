@@ -39,3 +39,6 @@ prisma/migrations/dev.db
 __probe/
 *.zip
 .postgres/
+
+.vercel
+.env*
