@@ -1,0 +1,4 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "prisma migrate deploy && prisma db seed && next build"
+}
