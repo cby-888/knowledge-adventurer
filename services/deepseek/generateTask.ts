@@ -33,6 +33,7 @@ export interface GenerateTaskInput {
 /** 生成一道结构化题目, 后端校验 AI 返回, 失败时抛错(由上层降级) */
 export async function generateTask(
   input: GenerateTaskInput,
+  apiKey?: string,
 ): Promise<GeneratedTask> {
   const system = [
     "你是一个游戏化学习平台的出题引擎。请根据指定职业、主题与难度，生成一道高质量学习任务。",
@@ -58,7 +59,7 @@ export async function generateTask(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    { jsonMode: true, temperature: 0.8, maxTokens: 1500 },
+    { jsonMode: true, temperature: 0.8, maxTokens: 1500, apiKey },
   );
 
   const json = extractJson(content);

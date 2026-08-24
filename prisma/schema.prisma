@@ -50,6 +50,7 @@ model User {
   username           String   @unique
   email              String   @unique
   passwordHash       String
+  deepseekApiKey     String? // 用户自己的 DeepSeek Key(可选, 仅后端使用)
   avatar             String   @default("🧑‍🚀")
   level              Int      @default(1)
   xp                 Int      @default(0)

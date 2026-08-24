@@ -12,7 +12,10 @@ export interface HintInput {
 }
 
 /** 给出一道题的渐进式提示(不直接给答案) */
-export async function generateHint(input: HintInput): Promise<string> {
+export async function generateHint(
+  input: HintInput,
+  apiKey?: string,
+): Promise<string> {
   const system = [
     "你是一个学习助教。请给出「引导式提示」，帮助学生自己思考，而不是直接给出答案。",
     levelInstruction(input.playerLevel),
@@ -25,7 +28,7 @@ export async function generateHint(input: HintInput): Promise<string> {
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    { temperature: 0.5, maxTokens: 300 },
+    { temperature: 0.5, maxTokens: 300, apiKey },
   );
 }
 
@@ -39,6 +42,7 @@ export interface ExplanationInput {
 /** 生成详细解析 */
 export async function generateExplanation(
   input: ExplanationInput,
+  apiKey?: string,
 ): Promise<string> {
   const system = [
     "你是一个知识讲解老师。请用清晰的结构讲解，必要时举例。",
@@ -58,6 +62,6 @@ export async function generateExplanation(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    { temperature: 0.6, maxTokens: 800 },
+    { temperature: 0.6, maxTokens: 800, apiKey },
   );
 }

@@ -20,6 +20,7 @@ const updateSchema = z.object({
     .regex(/^[\w\u4e00-\u9fa5-]+$/, "用户名只能包含中英文、数字、下划线和连字符")
     .optional(),
   avatar: z.string().min(1).max(8).optional(),
+  deepseekApiKey: z.string().max(200).optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -31,8 +32,10 @@ export async function PATCH(req: Request) {
     const parsed = parse(updateSchema, body);
     if (!parsed.success) return fail(parsed.error, 422);
 
-    const { username, avatar } = parsed.data;
-    if (!username && !avatar) return fail("没有可更新的内容", 422);
+    const { username, avatar, deepseekApiKey } = parsed.data;
+    if (!username && !avatar && deepseekApiKey === undefined) {
+      return fail("没有可更新的内容", 422);
+    }
 
     if (username) {
       const taken = await prisma.user.findUnique({ where: { username } });
@@ -44,6 +47,10 @@ export async function PATCH(req: Request) {
       data: {
         ...(username ? { username } : {}),
         ...(avatar ? { avatar } : {}),
+        // 空字符串表示清除 key(置 null)
+        ...(deepseekApiKey !== undefined
+          ? { deepseekApiKey: deepseekApiKey.trim() || null }
+          : {}),
       },
       include: {
         userCareers: { include: { career: true } },

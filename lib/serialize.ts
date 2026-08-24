@@ -14,6 +14,7 @@ export function serializeUser(u: UserWithRelations) {
     username: u.username,
     email: u.email,
     avatar: u.avatar,
+    hasAiKey: !!u.deepseekApiKey, // 只暴露是否配置了 key, 不泄露 key 本身
     level: u.level,
     xp: u.xp,
     gold: u.gold,

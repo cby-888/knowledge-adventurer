@@ -20,8 +20,11 @@ export async function POST(req: Request) {
     const rl = rateLimit(`chat:${userId}`, 20, 60_000);
     if (!rl.allowed) return fail("对话过于频繁，请稍后再试", 429);
 
-    if (!isConfigured()) {
-      throw new HttpError("DeepSeek API 未配置，请在 .env 设置 DEEPSEEK_API_KEY", 503);
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const apiKey = user.deepseekApiKey ?? undefined;
+
+    if (!isConfigured(apiKey)) {
+      throw new HttpError("请先在「设置」页配置你自己的 DeepSeek API Key", 503);
     }
 
     const body = await readJson(req);
@@ -30,8 +33,6 @@ export async function POST(req: Request) {
 
     const npc = await prisma.nPC.findUnique({ where: { id: parsed.data.npcId } });
     if (!npc) return fail("NPC 不存在", 404);
-
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
     // 复用或新建会话
     let conversation;
@@ -72,21 +73,24 @@ export async function POST(req: Request) {
       },
     });
 
-    const reply = await chatWithNPC({
-      npc: {
-        name: npc.name,
-        emoji: npc.emoji,
-        title: npc.title,
-        systemPrompt: npc.systemPrompt,
+    const reply = await chatWithNPC(
+      {
+        npc: {
+          name: npc.name,
+          emoji: npc.emoji,
+          title: npc.title,
+          systemPrompt: npc.systemPrompt,
+        },
+        playerLevel: user.level,
+        careerName: npc.careerId
+          ? ((await prisma.career.findUnique({ where: { id: npc.careerId } }))
+              ?.name ?? undefined)
+          : undefined,
+        history: historyForPrompt,
+        userMessage: parsed.data.message,
       },
-      playerLevel: user.level,
-      careerName: npc.careerId
-        ? ((await prisma.career.findUnique({ where: { id: npc.careerId } }))
-            ?.name ?? undefined)
-        : undefined,
-      history: historyForPrompt,
-      userMessage: parsed.data.message,
-    });
+      apiKey,
+    );
 
     // 保存助手消息
     await prisma.message.create({

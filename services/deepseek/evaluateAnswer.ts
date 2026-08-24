@@ -27,6 +27,7 @@ export interface EvaluateInput {
 /** 调用 DeepSeek 对主观题答案评分 */
 export async function evaluateAnswer(
   input: EvaluateInput,
+  apiKey?: string,
 ): Promise<Evaluation> {
   const system = [
     "你是一个严格但鼓励式的 AI 批改老师。请根据参考答案，评估学生的作答。",
@@ -51,7 +52,7 @@ export async function evaluateAnswer(
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    { jsonMode: true, temperature: 0.3, maxTokens: 800 },
+    { jsonMode: true, temperature: 0.3, maxTokens: 800, apiKey },
   );
 
   const json = extractJson(content);

@@ -19,8 +19,9 @@ export class DeepSeekNotConfiguredError extends Error {
   }
 }
 
-export function getConfig(): DeepSeekConfig | null {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+export function getConfig(apiKeyOverride?: string): DeepSeekConfig | null {
+  // 优先使用用户自己的 Key(BYOK), 否则回退到环境变量里的全局 Key
+  const apiKey = apiKeyOverride ?? process.env.DEEPSEEK_API_KEY;
   if (!apiKey) return null;
   return {
     apiKey,
@@ -29,8 +30,8 @@ export function getConfig(): DeepSeekConfig | null {
   };
 }
 
-export function isConfigured(): boolean {
-  return getConfig() !== null;
+export function isConfigured(apiKeyOverride?: string): boolean {
+  return getConfig(apiKeyOverride) !== null;
 }
 
 /** 根据玩家等级生成难度指引(注入到系统提示词) */
@@ -51,6 +52,7 @@ interface ChatOptions {
   temperature?: number;
   maxTokens?: number;
   jsonMode?: boolean;
+  apiKey?: string; // 用户自己的 Key, 缺省回退全局 Key
 }
 
 /** 调用 DeepSeek chat/completions, 返回模型文本输出 */
@@ -58,7 +60,7 @@ export async function chatCompletion(
   messages: ChatMessage[],
   opts: ChatOptions = {},
 ): Promise<string> {
-  const config = getConfig();
+  const config = getConfig(opts.apiKey);
   if (!config) throw new DeepSeekNotConfiguredError();
 
   const res = await fetch(`${config.baseUrl}/chat/completions`, {

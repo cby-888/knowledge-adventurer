@@ -22,8 +22,11 @@ export async function POST(req: Request) {
     const rl = rateLimit(`ai:${userId}`, 10, 60_000);
     if (!rl.allowed) return fail("AI 请求过于频繁，请稍后再试", 429);
 
-    if (!isConfigured()) {
-      throw new HttpError("DeepSeek API 未配置，请在 .env 设置 DEEPSEEK_API_KEY", 503);
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const apiKey = user.deepseekApiKey ?? undefined;
+
+    if (!isConfigured(apiKey)) {
+      throw new HttpError("请先在「设置」页配置你自己的 DeepSeek API Key", 503);
     }
 
     const body = await readJson(req);
@@ -35,15 +38,17 @@ export async function POST(req: Request) {
     });
     if (!career) return fail("职业不存在", 404);
 
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const level = parsed.data.level ?? user.level;
 
-    const generated = await generateTask({
-      career: career.name,
-      level,
-      topic: parsed.data.topic,
-      difficulty: parsed.data.difficulty,
-    });
+    const generated = await generateTask(
+      {
+        career: career.name,
+        level,
+        topic: parsed.data.topic,
+        difficulty: parsed.data.difficulty,
+      },
+      apiKey,
+    );
 
     // 落库, 便于后续提交评分
     const task = await prisma.task.create({

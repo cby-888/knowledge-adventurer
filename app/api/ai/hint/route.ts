@@ -15,8 +15,11 @@ export async function POST(req: Request) {
     const rl = rateLimit(`hint:${userId}`, 10, 60_000);
     if (!rl.allowed) return fail("请求过于频繁", 429);
 
-    if (!isConfigured()) {
-      throw new HttpError("DeepSeek API 未配置，请在 .env 设置 DEEPSEEK_API_KEY", 503);
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const apiKey = user.deepseekApiKey ?? undefined;
+
+    if (!isConfigured(apiKey)) {
+      throw new HttpError("请先在「设置」页配置你自己的 DeepSeek API Key", 503);
     }
 
     const body = await readJson(req);
@@ -29,13 +32,14 @@ export async function POST(req: Request) {
     });
     if (!task) return fail("任务不存在", 404);
 
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-
-    const hint = await generateHint({
-      career: task.career?.name ?? "通用",
-      question: task.question,
-      playerLevel: user.level,
-    });
+    const hint = await generateHint(
+      {
+        career: task.career?.name ?? "通用",
+        question: task.question,
+        playerLevel: user.level,
+      },
+      apiKey,
+    );
 
     return ok({ hint });
   }, req);

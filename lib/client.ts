@@ -28,6 +28,7 @@ export interface PublicUser {
   username: string;
   email: string;
   avatar: string;
+  hasAiKey?: boolean;
   level: number;
   xp: number;
   gold: number;

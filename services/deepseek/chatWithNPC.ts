@@ -22,7 +22,10 @@ export interface ChatWithNpcInput {
 }
 
 /** 与 AI NPC 对话, 返回助手的回复文本 */
-export async function chatWithNPC(input: ChatWithNpcInput): Promise<string> {
+export async function chatWithNPC(
+  input: ChatWithNpcInput,
+  apiKey?: string,
+): Promise<string> {
   const system = [
     input.npc.systemPrompt,
     `你是「${input.npc.name}」(${input.npc.title})${input.npc.emoji}。`,
@@ -41,5 +44,5 @@ export async function chatWithNPC(input: ChatWithNpcInput): Promise<string> {
     { role: "user", content: input.userMessage },
   ];
 
-  return chatCompletion(messages, { temperature: 0.8, maxTokens: 800 });
+  return chatCompletion(messages, { temperature: 0.8, maxTokens: 800, apiKey });
 }

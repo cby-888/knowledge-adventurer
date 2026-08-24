@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const { user, refresh } = useAuth();
   const [username, setUsername] = useState(user?.username ?? "");
   const [avatar, setAvatar] = useState(user?.avatar ?? "🧑‍🚀");
+  const [aiKey, setAiKey] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -34,10 +35,15 @@ export default function SettingsPage() {
     try {
       await api("/api/user", {
         method: "PATCH",
-        body: JSON.stringify({ username, avatar }),
+        body: JSON.stringify({
+          username,
+          avatar,
+          ...(aiKey.trim() ? { deepseekApiKey: aiKey.trim() } : {}),
+        }),
       });
+      setAiKey("");
       await refresh();
-      setMessage("✅ 资料已更新");
+      setMessage("✅ 已保存");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存失败");
     } finally {
@@ -87,6 +93,26 @@ export default function SettingsPage() {
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+
+        <div className="rounded-xl border border-neon/30 bg-neon/5 p-4">
+          <label className="mb-1 block text-sm font-semibold text-neon">
+            🤖 我的 DeepSeek API Key（可选）
+          </label>
+          <p className="mb-2 text-xs text-slate-400">
+            填你自己的 key 后，AI 出题/评分/导师对话就花你自己的额度，不占用站长。
+            不填也能用非 AI 功能。key 只保存在后端，不会泄露。
+            {user?.hasAiKey && (
+              <span className="text-neon-green"> 当前已配置 ✓</span>
+            )}
+          </p>
+          <input
+            type="password"
+            value={aiKey}
+            onChange={(e) => setAiKey(e.target.value)}
+            placeholder="sk-...（留空则保持不变）"
             className={inputCls}
           />
         </div>

@@ -60,9 +60,10 @@ export async function submitTask(
       : `回答错误。正确答案：${task.answer}`;
   } else {
     // 主观题: AI 评分
-    if (!isConfigured()) {
+    const apiKey = user.deepseekApiKey ?? undefined;
+    if (!isConfigured(apiKey)) {
       throw new Error(
-        "主观题需要 AI 评分，请先在 .env 配置 DEEPSEEK_API_KEY",
+        "主观题需要 AI 评分，请先在设置页配置你自己的 DeepSeek API Key",
       );
     }
     const careerName = task.careerId
@@ -70,14 +71,17 @@ export async function submitTask(
           ?.name ?? "")
       : "";
 
-    const evaluation = await evaluateAnswer({
-      career: careerName,
-      question: task.question,
-      referenceAnswer: task.answer,
-      userAnswer: answer,
-      playerLevel: user.level,
-      taskType: task.type,
-    });
+    const evaluation = await evaluateAnswer(
+      {
+        career: careerName,
+        question: task.question,
+        referenceAnswer: task.answer,
+        userAnswer: answer,
+        playerLevel: user.level,
+        taskType: task.type,
+      },
+      apiKey,
+    );
     score = evaluation.score;
     correct = evaluation.correct;
     feedback = evaluation.feedback;
