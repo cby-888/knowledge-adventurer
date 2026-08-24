@@ -8,6 +8,15 @@
 
 ---
 
+## 🚀 在线体验
+
+**🌐 立即体验：[https://knowledge-adventurer.vercel.app](https://knowledge-adventurer.vercel.app)**
+
+- 测试账号：`demo@example.com` / `demo1234`
+- AI 功能：注册后在「设置」页填入你自己的 DeepSeek Key 即可使用（每人自带 Key，互不干扰）
+
+---
+
 ## 📸 截图
 
 截图存放于 [`docs/screenshots/`](./docs/screenshots/)。启动项目后可截图放入该目录：
