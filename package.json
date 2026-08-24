@@ -11,6 +11,7 @@
     "test": "tsx --test \"tests/**/*.test.ts\"",
     "test:logic": "tsx --test \"tests/game/*.test.ts\"",
     "typecheck": "tsc --noEmit",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
