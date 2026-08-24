@@ -1,0 +1,333 @@
+// Knowledge Adventurer — Prisma Schema
+// 数据库: PostgreSQL
+// 设计原则: 每个关系都有明确的关联字段; 所有奖励字段最终由服务端重算, 前端不可信。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── 枚举 ───────────────────────────
+
+enum TaskType {
+  quiz // 选择题
+  short_answer // 简答题
+  scenario // 情景题
+  bug_fix // 找 Bug / 编程题
+  conversation // AI 对话任务
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+  expert
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+enum ActivityType {
+  task_completed
+  ai_task
+  chat
+  checkin
+  achievement
+  skill_unlock
+}
+
+// ─────────────────────────── 用户 ───────────────────────────
+
+model User {
+  id                 String   @id @default(cuid())
+  username           String   @unique
+  email              String   @unique
+  passwordHash       String
+  avatar             String   @default("🧑‍🚀")
+  level              Int      @default(1)
+  xp                 Int      @default(0)
+  gold               Int      @default(0)
+  hp                 Int      @default(100)
+  streakDays         Int      @default(0)
+  totalStudyMinutes  Int      @default(0)
+  tasksCompleted     Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  userCareers       UserCareer[]
+  userSkills        UserSkill[]
+  taskAttempts      TaskAttempt[]
+  userAchievements  UserAchievement[]
+  dailyCheckIns     DailyCheckIn[]
+  learningRecords   LearningRecord[]
+  conversations     Conversation[]
+
+  @@map("users")
+}
+
+// ─────────────────────────── 职业 ───────────────────────────
+
+model Career {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  emoji       String
+  description String
+  color       String   @default("#22d3ee")
+  topics      String[] // 学习方向标签
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  userCareers UserCareer[]
+  skills      Skill[]
+  tasks       Task[]
+  npcs        NPC[]
+
+  @@map("careers")
+}
+
+model UserCareer {
+  id         String   @id @default(cuid())
+  userId     String
+  careerId   String
+  level      Int      @default(1)
+  xp         Int      @default(0)
+  isActive   Boolean  @default(false)
+  unlockedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  career Career @relation(fields: [careerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, careerId])
+  @@index([userId])
+  @@map("user_careers")
+}
+
+// ─────────────────────────── 技能 ───────────────────────────
+
+model Skill {
+  id                String   @id @default(cuid())
+  careerId          String
+  name              String
+  slug              String
+  description       String
+  tier              Int      @default(1) // 技能树层级, 从 1 开始
+  levelRequirement  Int      @default(1) // 解锁所需玩家等级
+  xpReward          Int      @default(0) // 解锁时奖励的 XP
+  prerequisites     String[] // 前置技能的 slug 列表
+  positionX         Int      @default(0) // 技能树可视化坐标
+  positionY         Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  career     Career      @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  userSkills UserSkill[]
+
+  @@unique([careerId, slug])
+  @@index([careerId])
+  @@map("skills")
+}
+
+model UserSkill {
+  id         String   @id @default(cuid())
+  userId     String
+  skillId    String
+  unlockedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+  @@index([userId])
+  @@map("user_skills")
+}
+
+// ─────────────────────────── 任务 ───────────────────────────
+
+model Task {
+  id            String     @id @default(cuid())
+  careerId      String?
+  title         String
+  description   String
+  type          TaskType
+  difficulty    Difficulty @default(easy)
+  question      String
+  options       Json? // 选择题选项: ["A. ...", "B. ...", ...]
+  answer        String // 正确答案 / 参考答案 / 评分要点
+  explanation   String
+  xp            Int        @default(50)
+  gold          Int        @default(20)
+  topic         String // 知识点
+  isAiGenerated Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+
+  career   Career?       @relation(fields: [careerId], references: [id], onDelete: SetNull)
+  attempts TaskAttempt[]
+
+  @@index([careerId])
+  @@index([type, difficulty])
+  @@map("tasks")
+}
+
+model TaskAttempt {
+  id            String   @id @default(cuid())
+  taskId        String
+  userId        String
+  userAnswer    String
+  score         Int      @default(0) // 0-100
+  correct       Boolean  @default(false)
+  xpAwarded     Int      @default(0)
+  goldAwarded   Int      @default(0)
+  feedback      String?
+  isFirstCorrect Boolean @default(false) // 首次答对(用于防刷: 只有首次答对发全额奖励)
+  attemptedAt   DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, taskId])
+  @@map("task_attempts")
+}
+
+// ─────────────────────────── 成就 ───────────────────────────
+
+model Achievement {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  description    String
+  emoji          String
+  conditionType  String // task_count / streak_days / level_reach / career_count / ai_task_count / bug_fix_count / chat_count / invest_profit
+  conditionValue Int      @default(1)
+  xpReward       Int      @default(0)
+  goldReward     Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("user_achievements")
+}
+
+// ─────────────────────────── 签到 ───────────────────────────
+
+model DailyCheckIn {
+  id         String   @id @default(cuid())
+  userId     String
+  dateKey    String // "YYYY-MM-DD", 保证同一用户每天唯一
+  streak     Int      @default(1)
+  xpReward   Int      @default(0)
+  goldReward Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dateKey])
+  @@index([userId])
+  @@map("daily_checkins")
+}
+
+// ─────────────────────────── 学习记录 ───────────────────────────
+
+model LearningRecord {
+  id           String       @id @default(cuid())
+  userId       String
+  careerId     String?
+  taskId       String?
+  activityType ActivityType
+  xpEarned     Int          @default(0)
+  goldEarned   Int          @default(0)
+  minutesSpent Int          @default(0)
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("learning_records")
+}
+
+// ─────────────────────────── AI NPC 对话 ───────────────────────────
+
+model NPC {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  emoji        String
+  title        String
+  careerId     String?
+  systemPrompt String // NPC 人设与教学规则(供 DeepSeek 使用)
+  greeting     String
+  createdAt    DateTime @default(now())
+
+  career        Career?        @relation(fields: [careerId], references: [id], onDelete: SetNull)
+  conversations Conversation[]
+
+  @@map("npcs")
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  npcId     String?
+  careerId  String?
+  title     String
+  createdAt DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  npc      NPC?      @relation(fields: [npcId], references: [id], onDelete: SetNull)
+  messages Message[]
+
+  @@index([userId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  tokens         Int         @default(0)
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+// ─────────────────────────── 世界地图 ───────────────────────────
+
+model MapArea {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  emoji       String
+  description String
+  minLevel    Int      @default(1)
+  order       Int      @default(0)
+  locked      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("map_areas")
+}
